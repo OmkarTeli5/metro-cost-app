@@ -3,14 +3,14 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# Load trained model
+# Load model and encoder
 model = joblib.load("metro_cost_model.pkl")
+encoder = joblib.load("encoder.pkl")
 
 st.set_page_config(page_title="Metro Cost Estimator", layout="wide")
 st.title("🚇 Metro Civil Cost Estimator (ML-Based)")
 st.markdown("Enter metro station design & site parameters to estimate civil construction cost (₹ crore).")
 
-# --- Input Form ---
 with st.form("cost_form"):
     col1, col2, col3 = st.columns(3)
 
@@ -40,51 +40,63 @@ with st.form("cost_form"):
 
     submitted = st.form_submit_button("🔮 Predict Cost")
 
-# --- Prediction ---
 if submitted:
     input_dict = {
         'City': city,
         'Metro_Type': metro_type,
+        'Station_Typology': typology,
+        'Soil_Type': soil_type,
+        'Seismic_Zone': seismic_zone,
+        'Weather_Impact': weather,
+        'TBM_Used': tbm_used,
+        'Tower_Crane_Required': tower_crane,
+        'Excavator_Count': 4,
+        'Dewatering_Method': 'Wellpoint',
+        'Gantry_DG_Setup': 'Yes',
+        'Contract_Type': 'Item Rate',
+        'Construction_Method': 'Top-down' if metro_type == 'underground' else 'Bottom-up',
+        'Concrete_Grade': 'M30',
+        'Waterproofing_Type': 'membrane',
+        'Rebar_Type': 'Fe500D',
+        'Exchange_Rate_Sensitivity': 'Medium',
+        'Flood_Risk': 'No',
+        'Heritage_Nearby': 'No',
+        'Levels': levels
+    }
+
+    # Numeric fields
+    input_dict.update({
         'Station_Depth_m': station_depth,
         'Station_Length_m': station_length,
         'Station_Width_m': station_width,
-        'Levels': levels,
-        'Station_Typology': typology,
         'Excavation_Volume_cum': round(station_length * station_width * station_depth * 1.15),
         'Diaphragm_Wall_Area_sqm': diaphragm_wall_area,
-        'RCC_Volume_cum': rcc_volume,
-        'Soil_Type': soil_type,
-        'Seismic_Zone': seismic_zone,
-        'Regional_Cost_Index': regional_index,
-        'Weather_Impact': weather,
-        'Peak_Labor_Count': labor_count,
-        'TBM_Used': tbm_used,
-        'Tower_Crane_Required': tower_crane,
         'Waterproofing_Area_sqm': station_length * station_depth * 0.25 if metro_type == "underground" else station_length * 0.25,
-        'Foundation_Quantity': int(station_length * 1.1),
+        'RCC_Volume_cum': rcc_volume,
         'Shuttering_Area_sqm': round(rcc_volume * 1.4),
         'Reinforcement_TMT_tons': round(rcc_volume * 0.11, 2),
         'Structural_Steel_tons': 120 if metro_type == "underground" else 60,
         'Water_Table_m': 6,
-        'Flood_Risk': 'No',
-        'Heritage_Nearby': 'No',
         'Material_Inflation_Rate_percent': 6.0,
-        'Exchange_Rate_Sensitivity': 'Medium',
-        'Contract_Type': 'Item Rate',
-        'Construction_Method': 'Top-down' if metro_type == 'underground' else 'Bottom-up',
+        'Regional_Cost_Index': regional_index,
+        'Peak_Labor_Count': labor_count,
+        'Foundation_Quantity': int(station_length * 1.1),
         'Cement_Qty_tons': int(rcc_volume * 0.4),
         'Sand_Qty_cum': int(rcc_volume * 0.65),
         'Aggregate_Qty_cum': int(rcc_volume * 1.0),
-        'Concrete_Grade': 'M30',
-        'Waterproofing_Type': 'membrane',
-        'Rebar_Type': 'Fe500D',
-        'TBM_Diameter_m': 6.5 if tbm_used == "Yes" else 0,
-        'Excavator_Count': 4,
-        'Transit_Mixer_Day': 6,
-        'Dewatering_Method': 'Wellpoint',
-        'Gantry_DG_Setup': 'Yes'
-    }
+        'TBM_Diameter_m': 6.5 if tbm_used == "Yes" else 0
+    })
 
+    # DataFrame
     input_df = pd.DataFrame([input_dict])
-    cost_pred = model.predict(input_df)[0]
-    st.success(f"💰 **Estimated Civil Cost: ₹ {round(cost_pred, 2)} crore**")
+
+    # Split categorical/numerical
+    cat_cols = encoder.feature_names_in_
+    encoded_input = pd.DataFrame(encoder.transform(input_df[cat_cols]),
+                                 columns=encoder.get_feature_names_out(cat_cols))
+    numeric_input = input_df.drop(columns=cat_cols).reset_index(drop=True)
+    final_input = pd.concat([encoded_input, numeric_input], axis=1)
+
+    # Predict
+    cost = model.predict(final_input)[0]
+    st.success(f"💰 Estimated Civil Cost: ₹ {round(cost, 2)} crore")
