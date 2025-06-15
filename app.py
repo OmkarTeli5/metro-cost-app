@@ -23,6 +23,7 @@ with st.form("cost_form"):
         soil_type = st.selectbox("Soil Type", ['Alluvial', 'Rock', 'Clay', 'Mixed'])
         seismic_zone = st.selectbox("Seismic Zone", ['II', 'III', 'IV', 'V'])
         weather = st.selectbox("Weather Impact", ['Dry', 'Rainy', 'Flood Prone'])
+        entry_exit = st.slider("Entry/Exit Count", 2, 6, 3)
 
     with col2:
         station_length = st.slider("Station Length (m)", 120, 250, 180)
@@ -30,6 +31,7 @@ with st.form("cost_form"):
         station_width = st.slider("Station Width (m)", 15, 30, 20)
         levels = st.selectbox("Number of Levels", [2, 3])
         typology = st.selectbox("Station Typology", ['Regular', 'Interchange', 'Terminal'])
+        escalators = st.slider("Escalator Count", 2, 12, 6)
 
     with col3:
         rcc_volume = st.slider("RCC Volume (cum)", 3000, 20000, 12000)
@@ -38,6 +40,8 @@ with st.form("cost_form"):
         diaphragm_wall_area = st.number_input("Diaphragm Wall Area (sqm)", min_value=0)
         tbm_used = st.selectbox("TBM Used", ['Yes', 'No'])
         tower_crane = st.selectbox("Tower Crane Required", ['Yes', 'No'])
+        elevators = st.slider("Elevator Count", 1, 6, 3)
+        transit_mixers = st.slider("Transit Mixer (per day)", 1, 10, 5)
 
     submitted = st.form_submit_button("🔮 Predict Cost")
 
@@ -62,7 +66,11 @@ if submitted:
         'Exchange_Rate_Sensitivity': 'Medium',
         'Flood_Risk': 'No',
         'Heritage_Nearby': 'No',
-        'Levels': levels
+        'Levels': levels,
+        'Entry_Exit_Count': entry_exit,
+        'Escalator_Count': escalators,
+        'Elevator_Count': elevators,
+        'Transit_Mixer_Day': transit_mixers
     }
 
     input_dict.update({
@@ -94,7 +102,6 @@ if submitted:
     numeric_input = input_df.drop(columns=cat_cols).reset_index(drop=True)
     final_input = pd.concat([encoded_input, numeric_input], axis=1)
 
-    # ✅ Safely reorder columns using column_order
     try:
         final_input = final_input[column_order]
         cost = model.predict(final_input)[0]
