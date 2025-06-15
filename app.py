@@ -64,7 +64,6 @@ if submitted:
         'Levels': levels
     }
 
-    # Numeric fields
     input_dict.update({
         'Station_Depth_m': station_depth,
         'Station_Length_m': station_length,
@@ -87,16 +86,15 @@ if submitted:
         'TBM_Diameter_m': 6.5 if tbm_used == "Yes" else 0
     })
 
-    # DataFrame
     input_df = pd.DataFrame([input_dict])
-
-    # Split categorical/numerical
     cat_cols = encoder.feature_names_in_
     encoded_input = pd.DataFrame(encoder.transform(input_df[cat_cols]),
                                  columns=encoder.get_feature_names_out(cat_cols))
     numeric_input = input_df.drop(columns=cat_cols).reset_index(drop=True)
     final_input = pd.concat([encoded_input, numeric_input], axis=1)
 
-    # Predict
+    # ✅ Fix: Ensure column order matches model training
+    final_input = final_input[model.feature_names_in_]
+
     cost = model.predict(final_input)[0]
     st.success(f"💰 Estimated Civil Cost: ₹ {round(cost, 2)} crore")
