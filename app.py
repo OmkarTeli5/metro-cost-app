@@ -3,9 +3,10 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# Load model and encoder
+# Load model, encoder, and column list
 model = joblib.load("metro_cost_model.pkl")
 encoder = joblib.load("encoder.pkl")
+column_order = joblib.load("model_columns.pkl")
 
 st.set_page_config(page_title="Metro Cost Estimator", layout="wide")
 st.title("🚇 Metro Civil Cost Estimator (ML-Based)")
@@ -93,8 +94,8 @@ if submitted:
     numeric_input = input_df.drop(columns=cat_cols).reset_index(drop=True)
     final_input = pd.concat([encoded_input, numeric_input], axis=1)
 
-    # ✅ Fix: Ensure column order matches model training
-    final_input = final_input[model.feature_names_in_]
+    # ✅ Final fix: reorder columns to match training
+    final_input = final_input[column_order]
 
     cost = model.predict(final_input)[0]
     st.success(f"💰 Estimated Civil Cost: ₹ {round(cost, 2)} crore")
